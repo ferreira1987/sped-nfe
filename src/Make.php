@@ -280,6 +280,10 @@ class Make
     /**
      * @var array of DOMElements
      */
+    protected $aIBSCBS = [];
+    /**
+     * @var array of DOMElements
+     */
     protected $aInfAdProd = [];
     /**
      * @var array of DOMElements
@@ -377,6 +381,25 @@ class Make
         $this->stdTot->vICMSMonoReten = 0;
         $this->stdTot->qBCMonoRet = 0;
         $this->stdTot->vICMSMonoRet = 0;
+        $this->stdTot->vBCIBSCBS = 0;
+        $this->stdTot->vIBSUF = 0;
+        $this->stdTot->vIBSMun = 0;
+        $this->stdTot->vIBS = 0;
+        $this->stdTot->vCBS = 0;
+        $this->stdTot->vDifIBS = 0;
+        $this->stdTot->vDevTribIBS = 0;
+        $this->stdTot->vDifCBS = 0;
+        $this->stdTot->vDevTribCBS = 0;
+        $this->stdTot->vCredPresIBS = 0;
+        $this->stdTot->vCredPresCondSusIBS = 0;
+        $this->stdTot->vCredPresCBS = 0;
+        $this->stdTot->vCredPresCondSusCBS = 0;
+        $this->stdTot->vIBSMono = 0;
+        $this->stdTot->vCBSMono = 0;
+        $this->stdTot->vIBSMonoReten = 0;
+        $this->stdTot->vCBSMonoReten = 0;
+        $this->stdTot->vIBSMonoRet = 0;
+        $this->stdTot->vCBSMonoRet = 0;
 
         $this->stdISSQNTot = new \stdClass();
         $this->stdISSQNTot->vServ = null;
@@ -478,6 +501,10 @@ class Make
         $this->tagICMSTot($this->stdICMSTot);
         $this->dom->appChild($this->total, $this->ICMSTot, 'Falta tag "total"');
         $this->dom->appChild($this->total, $this->ISSQNTot, 'Falta tag "total"');
+        $ibscbsTot = $this->tagIBSCBSTot(null);
+        if ($ibscbsTot) {
+            $this->dom->appChild($this->total, $ibscbsTot, 'Falta tag "total"');
+        }
         if ($this->retTrib) {
             $this->dom->appChild($this->total, $this->retTrib, 'Falta tag "total"');
         }
@@ -4757,7 +4784,11 @@ class Make
 
         $CRT = $this->emit->getElementsByTagName("CRT")->item(0)->nodeValue ?? null;
         $allowEmptyOrig = $CRT == 4 && in_array($std->CSOSN, [
-            '102', '103', '300', '400', '900',
+            '102',
+            '103',
+            '300',
+            '400',
+            '900',
         ]);
 
         switch ($std->CSOSN) {
@@ -6134,6 +6165,128 @@ class Make
     }
 
     /**
+     * Grupo IBSCBS - IBS e CBS (Reforma Tributária)
+     * tag NFe/infNFe/det[]/imposto/IBSCBS (opcional)
+     */
+    public function tagIBSCBS(stdClass $std): DOMElement
+    {
+        $possible = [
+            'item',
+            'CST',
+            'cClassTrib',
+            'vBC',
+            'pIBSUF',
+            'vIBSUF',
+            'pIBSMun',
+            'vIBSMun',
+            'vIBS',
+            'pCBS',
+            'vCBS'
+        ];
+        $std = $this->equilizeParameters($std, $possible);
+
+        // Totalization
+        $this->stdTot->vBCIBSCBS += (float) !empty($std->vBC) ? $std->vBC : 0;
+        $this->stdTot->vIBSUF += (float) !empty($std->vIBSUF) ? $std->vIBSUF : 0;
+        $this->stdTot->vIBSMun += (float) !empty($std->vIBSMun) ? $std->vIBSMun : 0;
+        $this->stdTot->vIBS += (float) !empty($std->vIBS) ? $std->vIBS : 0;
+        $this->stdTot->vCBS += (float) !empty($std->vCBS) ? $std->vCBS : 0;
+
+        $identificador = 'IBSCBS01 <IBSCBS> - ';
+        $ibscbs = $this->dom->createElement("IBSCBS");
+
+        $this->dom->addChild(
+            $ibscbs,
+            "CST",
+            $std->CST,
+            true,
+            "$identificador [item $std->item] Código de Situação Tributária"
+        );
+
+        $this->dom->addChild(
+            $ibscbs,
+            "cClassTrib",
+            $std->cClassTrib,
+            true,
+            "$identificador [item $std->item] Código da Classificação Tributária"
+        );
+
+        $gIBSCBS = $this->dom->createElement("gIBSCBS");
+
+        $this->dom->addChild(
+            $gIBSCBS,
+            "vBC",
+            $this->conditionalNumberFormatting($std->vBC),
+            true,
+            "$identificador [item $std->item] Valor da BC do IBS/CBS"
+        );
+
+        $gIBSUF = $this->dom->createElement("gIBSUF");
+        $this->dom->addChild(
+            $gIBSUF,
+            "pIBSUF",
+            $this->conditionalNumberFormatting($std->pIBSUF, 4),
+            true,
+            "$identificador [item $std->item] Alíquota do IBS UF"
+        );
+        $this->dom->addChild(
+            $gIBSUF,
+            "vIBSUF",
+            $this->conditionalNumberFormatting($std->vIBSUF),
+            true,
+            "$identificador [item $std->item] Valor do IBS UF"
+        );
+        $gIBSCBS->appendChild($gIBSUF);
+
+        $gIBSMun = $this->dom->createElement("gIBSMun");
+        $this->dom->addChild(
+            $gIBSMun,
+            "pIBSMun",
+            $this->conditionalNumberFormatting($std->pIBSMun, 4),
+            true,
+            "$identificador [item $std->item] Alíquota do IBS Municipal"
+        );
+        $this->dom->addChild(
+            $gIBSMun,
+            "vIBSMun",
+            $this->conditionalNumberFormatting($std->vIBSMun),
+            true,
+            "$identificador [item $std->item] Valor do IBS Municipal"
+        );
+        $gIBSCBS->appendChild($gIBSMun);
+
+        $this->dom->addChild(
+            $gIBSCBS,
+            "vIBS",
+            $this->conditionalNumberFormatting($std->vIBS),
+            true,
+            "$identificador [item $std->item] Valor total do IBS"
+        );
+
+        $gCBS = $this->dom->createElement("gCBS");
+        $this->dom->addChild(
+            $gCBS,
+            "pCBS",
+            $this->conditionalNumberFormatting($std->pCBS, 4),
+            true,
+            "$identificador [item $std->item] Alíquota da CBS"
+        );
+        $this->dom->addChild(
+            $gCBS,
+            "vCBS",
+            $this->conditionalNumberFormatting($std->vCBS),
+            true,
+            "$identificador [item $std->item] Valor da CBS"
+        );
+        $gIBSCBS->appendChild($gCBS);
+
+        $ibscbs->appendChild($gIBSCBS);
+
+        $this->aIBSCBS[$std->item] = $ibscbs;
+        return $ibscbs;
+    }
+
+    /**
      * Grupo Totais referentes ao ICMS W02 pai W01
      * tag NFe/infNFe/total/ICMSTot
      */
@@ -6650,6 +6803,115 @@ class Make
         $this->retTrib = $retTrib;
         //$this->dom->appChild($this->total, $retTrib, '');
         return $retTrib;
+    }
+
+    /**
+     * Grupo Totais IBS/CBS
+     * tag NFe/infNFe/total/IBSCBSTot (opcional)
+     */
+    public function tagIBSCBSTot(stdClass $std = null): ?DOMElement
+    {
+        if (empty($this->aIBSCBS)) {
+            return null;
+        }
+
+        $possible = [
+            'vBCIBSCBS',
+            'vDifIBSUF',
+            'vDevTribIBSUF',
+            'vIBSUF',
+            'vDifIBSMun',
+            'vDevTribIBSMun',
+            'vIBSMun',
+            'vIBS',
+            'vCredPresIBS',
+            'vCredPresCondSusIBS',
+            'vDifCBS',
+            'vDevTribCBS',
+            'vCBS',
+            'vCredPresCBS',
+            'vCredPresCondSusCBS',
+            'vIBSMono',
+            'vCBSMono',
+            'vIBSMonoReten',
+            'vCBSMonoReten',
+            'vIBSMonoRet',
+            'vCBSMonoRet'
+        ];
+
+        if (isset($std)) {
+            $std = $this->equilizeParameters($std, $possible);
+        }
+
+        $vBCIBSCBS = $std->vBCIBSCBS ?? $this->stdTot->vBCIBSCBS;
+        $vDifIBSUF = $std->vDifIBSUF ?? 0;
+        $vDevTribIBSUF = $std->vDevTribIBSUF ?? 0;
+        $vIBSUF = $std->vIBSUF ?? $this->stdTot->vIBSUF;
+        $vDifIBSMun = $std->vDifIBSMun ?? 0;
+        $vDevTribIBSMun = $std->vDevTribIBSMun ?? 0;
+        $vIBSMun = $std->vIBSMun ?? $this->stdTot->vIBSMun;
+        $vIBS = $std->vIBS ?? $this->stdTot->vIBS;
+        $vCredPresIBS = $std->vCredPresIBS ?? 0;
+        $vCredPresCondSusIBS = $std->vCredPresCondSusIBS ?? 0;
+        $vDifCBS = $std->vDifCBS ?? 0;
+        $vDevTribCBS = $std->vDevTribCBS ?? 0;
+        $vCBS = $std->vCBS ?? $this->stdTot->vCBS;
+        $vCredPresCBS = $std->vCredPresCBS ?? 0;
+        $vCredPresCondSusCBS = $std->vCredPresCondSusCBS ?? 0;
+        $vIBSMono = $std->vIBSMono ?? 0;
+        $vCBSMono = $std->vCBSMono ?? 0;
+        $vIBSMonoReten = $std->vIBSMonoReten ?? 0;
+        $vCBSMonoReten = $std->vCBSMonoReten ?? 0;
+        $vIBSMonoRet = $std->vIBSMonoRet ?? 0;
+        $vCBSMonoRet = $std->vCBSMonoRet ?? 0;
+
+        $IBSCBSTot = $this->dom->createElement("IBSCBSTot");
+
+        $this->dom->addChild(
+            $IBSCBSTot,
+            "vBCIBSCBS",
+            $this->conditionalNumberFormatting($vBCIBSCBS),
+            false,
+            "Base de Cálculo IBS/CBS"
+        );
+
+        $gIBS = $this->dom->createElement("gIBS");
+
+        $gIBSUF = $this->dom->createElement("gIBSUF");
+        $this->dom->addChild($gIBSUF, "vDif", $this->conditionalNumberFormatting($vDifIBSUF), false, "Valor diferença IBS UF");
+        $this->dom->addChild($gIBSUF, "vDevTrib", $this->conditionalNumberFormatting($vDevTribIBSUF), false, "Valor devolução tributária IBS UF");
+        $this->dom->addChild($gIBSUF, "vIBSUF", $this->conditionalNumberFormatting($vIBSUF), false, "Valor IBS UF");
+        $gIBS->appendChild($gIBSUF);
+
+        $gIBSMun = $this->dom->createElement("gIBSMun");
+        $this->dom->addChild($gIBSMun, "vDif", $this->conditionalNumberFormatting($vDifIBSMun), false, "Valor diferença IBS Municipal");
+        $this->dom->addChild($gIBSMun, "vDevTrib", $this->conditionalNumberFormatting($vDevTribIBSMun), false, "Valor devolução tributária IBS Municipal");
+        $this->dom->addChild($gIBSMun, "vIBSMun", $this->conditionalNumberFormatting($vIBSMun), false, "Valor IBS Municipal");
+        $gIBS->appendChild($gIBSMun);
+
+        $this->dom->addChild($gIBS, "vIBS", $this->conditionalNumberFormatting($vIBS), false, "Valor total IBS");
+        $this->dom->addChild($gIBS, "vCredPres", $this->conditionalNumberFormatting($vCredPresIBS), false, "Valor crédito presumido IBS");
+        $this->dom->addChild($gIBS, "vCredPresCondSus", $this->conditionalNumberFormatting($vCredPresCondSusIBS), false, "Valor crédito presumido condição suspensiva IBS");
+        $IBSCBSTot->appendChild($gIBS);
+
+        $gCBS = $this->dom->createElement("gCBS");
+        $this->dom->addChild($gCBS, "vDif", $this->conditionalNumberFormatting($vDifCBS), false, "Valor diferença CBS");
+        $this->dom->addChild($gCBS, "vDevTrib", $this->conditionalNumberFormatting($vDevTribCBS), false, "Valor devolução tributária CBS");
+        $this->dom->addChild($gCBS, "vCBS", $this->conditionalNumberFormatting($vCBS), false, "Valor CBS");
+        $this->dom->addChild($gCBS, "vCredPres", $this->conditionalNumberFormatting($vCredPresCBS), false, "Valor crédito presumido CBS");
+        $this->dom->addChild($gCBS, "vCredPresCondSus", $this->conditionalNumberFormatting($vCredPresCondSusCBS), false, "Valor crédito presumido condição suspensiva CBS");
+        $IBSCBSTot->appendChild($gCBS);
+
+        $gMono = $this->dom->createElement("gMono");
+        $this->dom->addChild($gMono, "vIBSMono", $this->conditionalNumberFormatting($vIBSMono), false, "Valor IBS Monofásico");
+        $this->dom->addChild($gMono, "vCBSMono", $this->conditionalNumberFormatting($vCBSMono), false, "Valor CBS Monofásico");
+        $this->dom->addChild($gMono, "vIBSMonoReten", $this->conditionalNumberFormatting($vIBSMonoReten), false, "Valor IBS Monofásico Retido");
+        $this->dom->addChild($gMono, "vCBSMonoReten", $this->conditionalNumberFormatting($vCBSMonoReten), false, "Valor CBS Monofásico Retido");
+        $this->dom->addChild($gMono, "vIBSMonoRet", $this->conditionalNumberFormatting($vIBSMonoRet), false, "Valor IBS Monofásico Retorno");
+        $this->dom->addChild($gMono, "vCBSMonoRet", $this->conditionalNumberFormatting($vCBSMonoRet), false, "Valor CBS Monofásico Retorno");
+        $IBSCBSTot->appendChild($gMono);
+
+        return $IBSCBSTot;
     }
 
     /**
@@ -7758,6 +8020,9 @@ class Make
             }
             if (!empty($this->aCOFINSST[$nItem])) {
                 $this->dom->appChild($imposto, $this->aCOFINSST[$nItem], "Inclusão do node COFINSST");
+            }
+            if (!empty($this->aIBSCBS[$nItem])) {
+                $this->dom->appChild($imposto, $this->aIBSCBS[$nItem], "Inclusão do node IBSCBS");
             }
             if (!empty($this->aICMSUFDest[$nItem])) {
                 $this->dom->appChild($imposto, $this->aICMSUFDest[$nItem], "Inclusão do node ICMSUFDest");
